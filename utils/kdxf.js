@@ -5,49 +5,59 @@ var crypto = require('crypto');
 var urlencode = require('urlencode');
 var querystring = require("querystring");
 var fs = require("fs");
+var path = require('path');
 
 //语音合成
 //sourceType 1读弹幕
-function text2audio(text,sourceType,callback) {
+function text2audio(text,name,id,callback) {
+	console.log(__dirname)
 	var nowdate = Math.floor(Date.now() / 1000) + '';
-	var data = {
+	var mp3path = path.resolve(__dirname,'../public/mp3/'+id);
+	if(!fs.existsSync(mp3path)){
+		fs.mkdir(mp3path,0777,function(){
+			text2audio(text,name,id,callback)
+		});
+	}else{
+		var data = {
 			"auf": "audio/L16;rate=16000",
 			"aue": "raw",
 			"voice_name": "xiaoyan",
-			"speed": "40",
+			"speed": "50",
 			"volume": "50",
 			"pitch": "50",
 			"engine_type": "intp65",
 			"text_type": "text"
-	};
-	var param = base64encode(JSON.stringify(data));
-	var checksum = md5crypto(apikey + nowdate + param);
-	var bodyData = querystring.stringify({'text':text});
-	request({
-		'uri':'http://api.xfyun.cn/v1/service/v1/tts',
-		'method':'POST',
-		'headers':{
-			'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8',
-			'X-Appid':appid,
-			'X-CurTime':nowdate,
-			'X-Param':param,
-			'X-CheckSum':checksum
-		},
-		'body':bodyData
-	},function(error, response, body){
-		var contentType = response.headers['content-type'];
-		try{
-			if(contentType != 'audio/mpeg'){
-				console.log(body)
-				callback(JSON.parse(body));
-			}else{
-				 callback({code:0})
+		};
+		var param = base64encode(JSON.stringify(data));
+		var checksum = md5crypto(apikey + nowdate + param);
+		var bodyData = querystring.stringify({'text':urlencode.decode(text)});
+		request({
+			'uri':'http://api.xfyun.cn/v1/service/v1/tts',
+			'method':'POST',
+			'headers':{
+				'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8',
+				'X-Appid':appid,
+				'X-CurTime':nowdate,
+				'X-Param':param,
+				'X-CheckSum':checksum
+			},
+			'body':bodyData
+		},function(error, response, body){
+			var contentType = response.headers['content-type'];
+			try{
+				if(contentType != 'audio/mpeg'){
+					console.log(body)
+					callback(JSON.parse(body));
+				}else{
+					 callback({code:0})
+				}
+			}catch(e){
+				callback({code:1})
 			}
-		}catch(e){
-			callback({code:1})
-		}
-	})
-	.pipe(fs.createWriteStream('./public/mp3/'+sourceType+'.mp3'));
+		})
+		.pipe(fs.createWriteStream(mp3path+'/'+name+'.mp3'));
+	}
+	
 }
 
 function base64encode(str) {
