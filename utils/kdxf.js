@@ -20,7 +20,7 @@ function text2audio(text,name,id,callback) {
 	}else{
 		var data = {
 			"auf": "audio/L16;rate=16000",
-			"aue": "raw",
+			"aue": "lame",
 			"voice_name": "xiaoyan",
 			"speed": "50",
 			"volume": "50",
