@@ -3,28 +3,50 @@ var router = express.Router();
 var fs = require("fs");
 var kdxf = require('../utils/kdxf');
 var path = require('path');
-var querystring = require("querystring");
-
+var async = require("async");
+// https://niyh.cn/kdxf/text2audio?name=123&id=test&vcn=50&spd=50&text=hhh
 router.get('/text2audio', function(req, res, next) {
 	var name = req.query.name;
 	var text = req.query.text;
-	var id = req.query.id; //用于新建目录，各用户单独一个文件夹
-	kdxf.text2audio(text, name, id, function(ret) {
+	var vcn = req.query.vcn;
+	var spd = req.query.spd;
+	var id = req.query.id; //用于新建目录，各用户单独一个文件夹 roomid
+	var obj = {
+		text,
+		name,
+		id,
+		vcn,
+		spd
+	};
+	kdxf.text2audio(obj, function(err, ret) {
 		res.send(ret)
 	});
 });
 router.post('/text2audio', function(req, res, next) {
+	console.log('im in')
 	var textarr = eval(req.body.textarr);
 	var id = req.body.id; //用于新建目录，各用户单独一个文件夹
-	
-	// kdxf.text2audio(text, name, id, function(ret) {
-		res.send({code:0,urls:[]});
-	// });
+	console.log(textarr, id);
+	async.mapLimit(textarr, 2, function(textobj, callback) {
+
+		kdxf.text2audio(textobj.text, textobj.name, id, callback);
+	}, function(err, results) {
+		console.log(results);
+		var urls = results.map((v, k) => {
+			if (v.code == 0) {
+				return v.data.url;
+			}
+		})
+		res.send({
+			code: 0,
+			urls: urls
+		});
+	})
 });
 
 router.get('/clearfiles', function(req, res, next) {
 	var id = req.query.id; //用于新建目录，各用户单独一个文件夹
-	var mp3path = path.resolve(__dirname,'../public/mp3/'+id);
+	var mp3path = path.resolve(__dirname, '../public/mp3/' + id);
 	if (fs.existsSync(mp3path)) {
 		var dirList = fs.readdirSync(mp3path);
 		dirList.forEach(function(fileName) {
